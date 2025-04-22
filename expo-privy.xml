@@ -1,0 +1,936 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+<additional_info>
+
+</additional_info>
+
+</file_summary>
+
+<directory_structure>
+app/
+  _layout.tsx
+  index.tsx
+components/
+  LoginScreen.tsx
+  UserScreen.tsx
+constants/
+  Colors.ts
+hooks/
+  useColorScheme.ts
+  useColorScheme.web.ts
+  useThemeColor.ts
+scripts/
+  reset-project.js
+.gitignore
+app.json
+babel.config.js
+entrypoint.js
+metro.config.js
+package.json
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/_layout.tsx">
+import Constants from "expo-constants";
+import { Stack } from "expo-router";
+import { PrivyProvider, PrivyElements } from "@privy-io/expo";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+} from "@expo-google-fonts/inter";
+import { useFonts } from "expo-font";
+
+export default function RootLayout() {
+  useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+  });
+  return (
+    <PrivyProvider
+      appId={Constants.expoConfig?.extra?.privyAppId}
+      clientId={Constants.expoConfig?.extra?.privyClientId}
+    >
+      <Stack>
+        <Stack.Screen name="index" />
+      </Stack>
+      <PrivyElements />
+    </PrivyProvider>
+  );
+}
+</file>
+
+<file path="app/index.tsx">
+import { SafeAreaView, Text, View } from "react-native";
+import Constants from "expo-constants";
+import LoginScreen from "@/components/LoginScreen";
+import { usePrivy } from "@privy-io/expo";
+import { UserScreen } from "@/components/UserScreen";
+
+export default function Index() {
+  const { user } = usePrivy();
+  if ((Constants.expoConfig?.extra?.privyAppId as string).length !== 25) {
+    return (
+      <SafeAreaView>
+        <View
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text>You have not set a valid `privyAppId` in app.json</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  if (
+    !(Constants.expoConfig?.extra?.privyClientId as string).startsWith(
+      "client-"
+    )
+  ) {
+    return (
+      <SafeAreaView>
+        <View
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text>You have not set a valid `privyClientId` in app.json</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  return !user ? <LoginScreen /> : <UserScreen />;
+}
+</file>
+
+<file path="components/LoginScreen.tsx">
+import { Button, Linking, Text, View } from "react-native";
+import {
+  LoginWithOAuthInput,
+  useLoginWithOAuth,
+  useLogin,
+} from "@privy-io/expo";
+import { useLoginWithPasskey } from "@privy-io/expo/passkey";
+import Constants from "expo-constants";
+import { useState } from "react";
+import * as Application from "expo-application";
+
+export default function LoginScreen() {
+  const [error, setError] = useState("");
+  const { loginWithPasskey } = useLoginWithPasskey({
+    onError: (err) => {
+      console.log(err);
+      setError(JSON.stringify(err.message));
+    },
+  });
+  const { login } = useLogin();
+  const oauth = useLoginWithOAuth({
+    onError: (err) => {
+      console.log(err);
+      setError(JSON.stringify(err.message));
+    },
+  });
+  return (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 10,
+        marginHorizontal: 10,
+      }}
+    >
+      <Text>Privy App ID:</Text>
+      <Text style={{ fontSize: 10 }}>
+        {Constants.expoConfig?.extra?.privyAppId}
+      </Text>
+      <Text>Privy Client ID:</Text>
+      <Text style={{ fontSize: 10 }}>
+        {Constants.expoConfig?.extra?.privyClientId}
+      </Text>
+      <Text>
+        Navigate to your{" "}
+        <Text
+          onPress={() =>
+            Linking.openURL(
+              `https://dashboard.privy.io/apps/${Constants.expoConfig?.extra?.privyAppId}/settings?setting=clients`
+            )
+          }
+        >
+          dashboard
+        </Text>{" "}
+        and ensure the following Expo Application ID is listed as an `Allowed
+        app identifier`:
+      </Text>
+      <Text style={{ fontSize: 10 }}>{Application.applicationId}</Text>
+      <Text>
+        Navigate to your{" "}
+        <Text
+          onPress={() =>
+            Linking.openURL(
+              `https://dashboard.privy.io/apps/${Constants.expoConfig?.extra?.privyAppId}/settings?setting=clients`
+            )
+          }
+        >
+          dashboard
+        </Text>{" "}
+        and ensure the following value is listed as an `Allowed app URL scheme`:
+      </Text>
+      <Text style={{ fontSize: 10 }}>
+        {Application.applicationId === "host.exp.Exponent"
+          ? "exp"
+          : Constants.expoConfig?.scheme}
+      </Text>
+
+      <Button
+        title="Login with Privy UIs"
+        onPress={() => {
+          login({ loginMethods: ["email"] })
+            .then((session) => {
+              console.log("User logged in", session.user);
+            })
+            .catch((err) => {
+              setError(JSON.stringify(err.error) as string);
+            });
+        }}
+      />
+
+      <Button
+        title="Login using Passkey"
+        onPress={() =>
+          loginWithPasskey({
+            relyingParty: Constants.expoConfig?.extra?.passkeyAssociatedDomain,
+          })
+        }
+      />
+
+      <View
+        style={{ display: "flex", flexDirection: "column", gap: 5, margin: 10 }}
+      >
+        {["github", "google", "discord", "apple"].map((provider) => (
+          <View key={provider}>
+            <Button
+              title={`Login with ${provider}`}
+              disabled={oauth.state.status === "loading"}
+              onPress={() => oauth.login({ provider } as LoginWithOAuthInput)}
+            ></Button>
+          </View>
+        ))}
+      </View>
+      {error && <Text style={{ color: "red" }}>Error: {error}</Text>}
+    </View>
+  );
+}
+</file>
+
+<file path="components/UserScreen.tsx">
+import React, { useState, useCallback } from "react";
+import { Text, TextInput, View, Button, ScrollView } from "react-native";
+
+import {
+  usePrivy,
+  useEmbeddedEthereumWallet,
+  getUserEmbeddedEthereumWallet,
+  PrivyEmbeddedWalletProvider,
+  useLinkWithOAuth,
+} from "@privy-io/expo";
+import Constants from "expo-constants";
+import { useLinkWithPasskey } from "@privy-io/expo/passkey";
+import { PrivyUser } from "@privy-io/public-api";
+
+const toMainIdentifier = (x: PrivyUser["linked_accounts"][number]) => {
+  if (x.type === "phone") {
+    return x.phoneNumber;
+  }
+  if (x.type === "email" || x.type === "wallet") {
+    return x.address;
+  }
+
+  if (x.type === "twitter_oauth" || x.type === "tiktok_oauth") {
+    return x.username;
+  }
+
+  if (x.type === "custom_auth") {
+    return x.custom_user_id;
+  }
+
+  return x.type;
+};
+
+export const UserScreen = () => {
+  const [chainId, setChainId] = useState("1");
+  const [signedMessages, setSignedMessages] = useState<string[]>([]);
+
+  const { logout, user } = usePrivy();
+  const { linkWithPasskey } = useLinkWithPasskey();
+  const oauth = useLinkWithOAuth();
+  const { wallets, create } = useEmbeddedEthereumWallet();
+  const account = getUserEmbeddedEthereumWallet(user);
+
+  const signMessage = useCallback(
+    async (provider: PrivyEmbeddedWalletProvider) => {
+      try {
+        const message = await provider.request({
+          method: "personal_sign",
+          params: [`0x0${Date.now()}`, account?.address],
+        });
+        if (message) {
+          setSignedMessages((prev) => prev.concat(message));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [account?.address]
+  );
+
+  const switchChain = useCallback(
+    async (provider: PrivyEmbeddedWalletProvider, id: string) => {
+      try {
+        await provider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: id }],
+        });
+        alert(`Chain switched to ${id} successfully`);
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [account?.address]
+  );
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <View>
+      <Button
+        title="Link Passkey"
+        onPress={() =>
+          linkWithPasskey({
+            relyingParty: Constants.expoConfig?.extra?.passkeyAssociatedDomain,
+          })
+        }
+      />
+      <View style={{ display: "flex", flexDirection: "column", margin: 10 }}>
+        {(["github", "google", "discord", "apple"] as const).map((provider) => (
+          <View key={provider}>
+            <Button
+              title={`Link ${provider}`}
+              disabled={oauth.state.status === "loading"}
+              onPress={() => oauth.link({ provider })}
+            ></Button>
+          </View>
+        ))}
+      </View>
+
+      <ScrollView style={{ borderColor: "rgba(0,0,0,0.1)", borderWidth: 1 }}>
+        <View
+          style={{
+            padding: 20,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <View>
+            <Text style={{ fontWeight: "bold" }}>User ID</Text>
+            <Text>{user.id}</Text>
+          </View>
+
+          <View>
+            <Text style={{ fontWeight: "bold" }}>Linked accounts</Text>
+            {user?.linked_accounts.length ? (
+              <View style={{ display: "flex", flexDirection: "column" }}>
+                {user?.linked_accounts?.map((m) => (
+                  <Text
+                    key={m.verified_at}
+                    style={{
+                      color: "rgba(0,0,0,0.5)",
+                      fontSize: 12,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    {m.type}: {toMainIdentifier(m)}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          <View>
+            {account?.address && (
+              <>
+                <Text style={{ fontWeight: "bold" }}>Embedded Wallet</Text>
+                <Text>{account?.address}</Text>
+              </>
+            )}
+
+            <Button title="Create Wallet" onPress={() => create()} />
+
+            <>
+              <Text>Chain ID to set to:</Text>
+              <TextInput
+                value={chainId}
+                onChangeText={setChainId}
+                placeholder="Chain Id"
+              />
+              <Button
+                title="Switch Chain"
+                onPress={async () =>
+                  switchChain(await wallets[0].getProvider(), chainId)
+                }
+              />
+            </>
+          </View>
+
+          <View style={{ display: "flex", flexDirection: "column" }}>
+            <Button
+              title="Sign Message"
+              onPress={async () => signMessage(await wallets[0].getProvider())}
+            />
+
+            <Text>Messages signed:</Text>
+            {signedMessages.map((m) => (
+              <React.Fragment key={m}>
+                <Text
+                  style={{
+                    color: "rgba(0,0,0,0.5)",
+                    fontSize: 12,
+                    fontStyle: "italic",
+                  }}
+                >
+                  {m}
+                </Text>
+                <View
+                  style={{
+                    marginVertical: 5,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "rgba(0,0,0,0.2)",
+                  }}
+                />
+              </React.Fragment>
+            ))}
+          </View>
+          <Button title="Logout" onPress={logout} />
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
+</file>
+
+<file path="constants/Colors.ts">
+/**
+ * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
+ * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ */
+
+const tintColorLight = '#0a7ea4';
+const tintColorDark = '#fff';
+
+export const Colors = {
+  light: {
+    text: '#11181C',
+    background: '#fff',
+    tint: tintColorLight,
+    icon: '#687076',
+    tabIconDefault: '#687076',
+    tabIconSelected: tintColorLight,
+  },
+  dark: {
+    text: '#ECEDEE',
+    background: '#151718',
+    tint: tintColorDark,
+    icon: '#9BA1A6',
+    tabIconDefault: '#9BA1A6',
+    tabIconSelected: tintColorDark,
+  },
+};
+</file>
+
+<file path="hooks/useColorScheme.ts">
+export { useColorScheme } from 'react-native';
+</file>
+
+<file path="hooks/useColorScheme.web.ts">
+// NOTE: The default React Native styling doesn't support server rendering.
+// Server rendered styles should not change between the first render of the HTML
+// and the first render on the client. Typically, web developers will use CSS media queries
+// to render different styles on the client and server, these aren't directly supported in React Native
+// but can be achieved using a styling library like Nativewind.
+export function useColorScheme() {
+  return 'light';
+}
+</file>
+
+<file path="hooks/useThemeColor.ts">
+/**
+ * Learn more about light and dark modes:
+ * https://docs.expo.dev/guides/color-schemes/
+ */
+
+import { useColorScheme } from 'react-native';
+
+import { Colors } from '@/constants/Colors';
+
+export function useThemeColor(
+  props: { light?: string; dark?: string },
+  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+) {
+  const theme = useColorScheme() ?? 'light';
+  const colorFromProps = props[theme];
+
+  if (colorFromProps) {
+    return colorFromProps;
+  } else {
+    return Colors[theme][colorName];
+  }
+}
+</file>
+
+<file path="scripts/reset-project.js">
+#!/usr/bin/env node
+
+/**
+ * This script is used to reset the project to a blank state.
+ * It moves the /app directory to /app-example and creates a new /app directory with an index.tsx and _layout.tsx file.
+ * You can remove the `reset-project` script from package.json and safely delete this file after running it.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const root = process.cwd();
+const oldDirPath = path.join(root, 'app');
+const newDirPath = path.join(root, 'app-example');
+const newAppDirPath = path.join(root, 'app');
+
+const indexContent = `import { Text, View } from "react-native";
+
+export default function Index() {
+  return (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Text>Edit app/index.tsx to edit this screen.</Text>
+    </View>
+  );
+}
+`;
+
+const layoutContent = `import { Stack } from "expo-router";
+
+export default function RootLayout() {
+  return (
+    <Stack>
+      <Stack.Screen name="index" />
+    </Stack>
+  );
+}
+`;
+
+fs.rename(oldDirPath, newDirPath, (error) => {
+  if (error) {
+    return console.error(`Error renaming directory: ${error}`);
+  }
+  console.log('/app moved to /app-example.');
+
+  fs.mkdir(newAppDirPath, { recursive: true }, (error) => {
+    if (error) {
+      return console.error(`Error creating new app directory: ${error}`);
+    }
+    console.log('New /app directory created.');
+
+    const indexPath = path.join(newAppDirPath, 'index.tsx');
+    fs.writeFile(indexPath, indexContent, (error) => {
+      if (error) {
+        return console.error(`Error creating index.tsx: ${error}`);
+      }
+      console.log('app/index.tsx created.');
+
+      const layoutPath = path.join(newAppDirPath, '_layout.tsx');
+      fs.writeFile(layoutPath, layoutContent, (error) => {
+        if (error) {
+          return console.error(`Error creating _layout.tsx: ${error}`);
+        }
+        console.log('app/_layout.tsx created.');
+      });
+    });
+  });
+});
+</file>
+
+<file path=".gitignore">
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# builds
+android/
+ios/
+
+# typescript
+*.tsbuildinfo
+# @generated expo-cli sync-2b81b286409207a5da26e14c78851eb30d8ccbdb
+# The following patterns were generated by expo-cli
+
+expo-env.d.ts
+# @end expo-cli
+</file>
+
+<file path="app.json">
+{
+  "expo": {
+    "name": "@privy-io/expo-starter",
+    "slug": "expo-starter",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "usesAppleSignIn": true,
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.privy.example",
+      "associatedDomains": ["webcredentials:<your-associated-domain>"],
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "dev.privy.example"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "extra": {
+      "privyAppId": "<your-privy-app-id>",
+      "privyClientId": "<your-privy-app-client-id>",
+      "passkeyAssociatedDomain": "https://<your-associated-domain>"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-apple-authentication",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.5"
+          },
+          "android": {
+            "compileSdkVersion": 34
+          }
+        }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
+</file>
+
+<file path="babel.config.js">
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+  };
+};
+</file>
+
+<file path="entrypoint.js">
+// entrypoint.js
+
+// Import required polyfills first
+// IMPORTANT: These polyfills must be installed in this order
+import "fast-text-encoding";
+import "react-native-get-random-values";
+import "@ethersproject/shims";
+// Then import the expo router
+import "expo-router/entry";
+</file>
+
+<file path="metro.config.js">
+const { getDefaultConfig, mergeConfig } = require("@expo/metro-config");
+
+/**
+ * Metro configuration
+ * https://metrobundler.dev/docs/configuration
+ *
+ * @type {import('metro-config').MetroConfig}
+ */
+const config = getDefaultConfig(__dirname);
+const modulesToEnableExports = ["@privy-io/expo", "@privy-io/expo/passkey"];
+
+const resolveRequestWithPackageExports = (context, moduleName, platform) => {
+  if (modulesToEnableExports.includes(moduleName)) {
+    const ctx = {
+      ...context,
+      unstable_enablePackageExports: true,
+    };
+    return ctx.resolveRequest(ctx, moduleName, platform);
+  }
+
+  return context.resolveRequest(context, moduleName, platform);
+};
+
+config.resolver.resolveRequest = resolveRequestWithPackageExports;
+
+module.exports = config;
+</file>
+
+<file path="package.json">
+{
+  "name": "expo-starter-2",
+  "main": "entrypoint.js",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "test": "jest --watchAll",
+    "lint": "expo lint"
+  },
+  "jest": {
+    "preset": "jest-expo"
+  },
+  "dependencies": {
+    "@ethersproject/shims": "^5.7.0",
+    "@expo-google-fonts/inter": "^0.2.3",
+    "@expo/metro-config": "^0.18.11",
+    "@expo/vector-icons": "^14.0.2",
+    "@privy-io/expo": "^0.49.0",
+    "@react-native/metro-config": "^0.75.4",
+    "@react-navigation/native": "^6.0.2",
+    "expo": "~51.0.28",
+    "expo-apple-authentication": "^6.4.2",
+    "expo-application": "~5.9.1",
+    "expo-build-properties": "^0.12.5",
+    "expo-clipboard": "^7.0.1",
+    "expo-constants": "~16.0.2",
+    "expo-crypto": "~13.0.2",
+    "expo-dev-client": "~4.0.28",
+    "expo-font": "~12.0.10",
+    "expo-linking": "~6.3.1",
+    "expo-router": "~3.5.23",
+    "expo-secure-store": "~13.0.2",
+    "expo-splash-screen": "~0.27.5",
+    "expo-status-bar": "~1.12.1",
+    "expo-system-ui": "~3.0.7",
+    "expo-web-browser": "~13.0.3",
+    "fast-text-encoding": "^1.0.6",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-gesture-handler": "~2.16.1",
+    "react-native-get-random-values": "^1.11.0",
+    "react-native-passkeys": "^0.3.0",
+    "react-native-reanimated": "~3.10.1",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "3.31.1",
+    "react-native-svg": "15.2.0",
+    "react-native-web": "~0.19.10",
+    "react-native-webview": "13.8.6",
+    "viem": "^2.21.51"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@types/jest": "^29.5.12",
+    "@types/react": "~18.2.45",
+    "@types/react-test-renderer": "^18.0.7",
+    "jest": "^29.2.1",
+    "jest-expo": "~51.0.3",
+    "react-test-renderer": "18.2.0",
+    "typescript": "~5.3.3"
+  },
+  "private": true
+}
+</file>
+
+<file path="README.md">
+# Privy Expo Starter
+
+This demonstrates a minimal working installation of the privy sdk in a fresh expo app. We recommend reading the [documentation](https://docs.privy.io/guide/expo/dashboard) for a more detailed guide.
+
+## Setup
+
+1. Install dependencies
+
+   ```sh
+   npm i
+   ```
+
+2. Configure an app client in your [Dashboard](https://dashboard.privy.io/apps?page=settings&setting=clients), and add your Privy app ID and app client ID in `app.json`
+
+   ```json
+   ...
+    "extra": {
+      "privyAppId": "<your-app-id>",
+      "privyClientId": "<your-client-id>"
+    }
+   ...
+   ```
+
+   If you are using Expo go, be sure to add `host.exp.Exponent` to Allowed app identifiers under app clients in your [Dashboard]('https://dashboard.privy.io/apps?page=settings&setting=clients')
+
+3. Configure your application identifier in `app.json`. This should match the bundle identifier for your app in the app store.
+
+   ```json
+   ...
+    "ios": {
+      "bundleIdentifier": "com.example.myapp"
+    },
+    "android": {
+      "package": "com.example.myapp"
+    }
+   ...
+   ```
+
+4. If you are making use of passkeys, ensure that you have an [associated website](https://docs.privy.io/guide/expo/setup/passkey#_3-update-native-app-settings) for your application. Once you have this your `app.json` should be updated as follows:
+
+   ```json
+   ...
+   "associatedDomains": ["webcredentials:<your-associated-domain>"],
+   ...
+   "extra": {
+      ...
+      "passkeyAssociatedDomain": "https://<your-associated-domain>"
+    },
+   ...
+   ```
+
+## Run the app
+
+```sh
+# expo go
+npx expo start
+
+# ios
+npx expo run:ios
+
+# android
+npx expo run:android
+```
+</file>
+
+<file path="tsconfig.json">
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    // Allows us to use conditional/deep imports on published packages
+    "moduleResolution": "Bundler",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+, "app/index.js"  ]
+}
+</file>
+
+</files>

@@ -1,4 +1,5 @@
 import Header from '@/components/Header';
+import LoginModal from '@/components/LoginModal';
 import Slider from '@/components/Slider';
 import { useCoins } from '@/contexts/CoinContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -15,11 +16,13 @@ const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 
 export default function DiscoverScreen() {
   const {isReady, user} = usePrivy();
+  console.log({user});
   const { colors } = useTheme();
   const { wallet, balance } = useWallet();
   const { coins, loading, fetchCoins } = useCoins();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipeAmount, setSwipeAmount] = useState(5); // Default $5 USDC per swipe
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
   const rotate = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
@@ -30,6 +33,13 @@ export default function DiscoverScreen() {
   useEffect(() => {
     fetchCoins();
   }, []);
+
+  // Show login modal if coins are loaded and user is not logged in
+  useEffect(() => {
+    if (!loading && isReady && !user) {
+      setShowLoginModal(true);
+    }
+  }, [loading, isReady, user]);
 
   const triggerHapticFeedback = () => {
     if (Platform.OS !== 'web') {
@@ -46,6 +56,13 @@ export default function DiscoverScreen() {
   };
 
   const swipeLeft = () => {
+    // Check if user is logged in first
+    if (!user) {
+      setShowLoginModal(true);
+      resetPosition();
+      return;
+    }
+
     Animated.timing(position, {
       toValue: { x: -SCREEN_WIDTH, y: 0 },
       duration: 250,
@@ -57,6 +74,13 @@ export default function DiscoverScreen() {
   };
 
   const swipeRight = () => {
+    // Check if user is logged in first
+    if (!user) {
+      setShowLoginModal(true);
+      resetPosition();
+      return;
+    }
+
     if (parseFloat(balance.usdc) < swipeAmount) {
       alert('Insufficient USDC balance');
       resetPosition();
@@ -246,6 +270,12 @@ export default function DiscoverScreen() {
           <Text style={styles.actionButtonText}>Buy ${swipeAmount}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Login Modal */}
+      <LoginModal 
+        visible={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+      />
     </View>
   );
 }

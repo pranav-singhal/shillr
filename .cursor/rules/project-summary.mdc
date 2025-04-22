@@ -1,0 +1,20 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+This is an that allows users to buy memecoins with a tinder like UX. This app will be live on Solana blockchain
+Key features:
+- For each swipe, user can set the swipe amount
+- On right swipe, buy logic is triggered
+- On left swipe, the token is ignored
+- User has an embedded wallet ( SOLANA wallet )
+
+Technical details:
+- React native + expo for framework
+- wallet provider is privy.io. Refer to [expo-privy.xml](mdc:expo-privy.xml) for understanding how to integrate privy. This file has details about an example codebase which uses privy with expo in a project
+- privy has multiple hooks. Refer to [expo-privy.xml](mdc:expo-privy.xml) to understand which hook to use where
+- uses solana/web3.js for connecting to solana devnet and mainnet
+

@@ -1,3 +1,4 @@
+import { getUserEmbeddedSolanaWallet, useEmbeddedSolanaWallet, usePrivy } from '@privy-io/expo';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -50,7 +51,10 @@ interface WalletProviderProps {
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: WalletProviderProps) {
-  const [wallet, setWallet] = useState({
+  const [wallet, setWallet] = useState<{
+    publicKey: string | null;
+    isConnected: boolean;
+  }>({
     publicKey: null,
     isConnected: false,
   });
@@ -59,33 +63,69 @@ export function WalletProvider({ children }: WalletProviderProps) {
     usdc: '10',
     sol: '10',
   });
+
+  const { user, isReady } = usePrivy();
+  const solanaWallet = useEmbeddedSolanaWallet();
   
-  // Initialize wallet on app load
+  // Initialize wallet when user is loaded
   useEffect(() => {
     const initWallet = async () => {
-      try {
-        const storedPublicKey = await storage.getItem('wallet_public_key');
+      if (isReady && user) {
+        // Check if user has an embedded wallet
+        const embeddedWallet = getUserEmbeddedSolanaWallet(user);
         
-        if (storedPublicKey) {
+        if (embeddedWallet && embeddedWallet.address) {
           setWallet({
-            publicKey: storedPublicKey,
+            publicKey: embeddedWallet.address,
             isConnected: true,
           });
           
           await refreshWallet();
+        } else {
+          // Create a wallet if they don't have one yet
+          await connectWallet();
         }
-      } catch (error) {
-        console.error('Error initializing wallet:', error);
+      } else if (isReady && !user) {
+        // Reset wallet state when user logs out
+        setWallet({
+          publicKey: null,
+          isConnected: false,
+        });
       }
     };
     
     initWallet();
-  }, []);
+  }, [isReady, user]);
   
   const connectWallet = async () => {
     try {
-      // In a real app, we would use a real wallet adapter
-      // For this demo, we'll generate a fake key pair
+      // If we have a Privy user, create an embedded wallet
+      if (user) {
+        // Create wallet if none exists
+        if (solanaWallet.wallets && solanaWallet.wallets.length === 0) {
+          await solanaWallet.create?.();
+        }
+        
+        // Get the wallet address after creation
+        const embeddedWallet = getUserEmbeddedSolanaWallet(user);
+        
+        if (embeddedWallet && embeddedWallet.address) {
+          setWallet({
+            publicKey: embeddedWallet.address,
+            isConnected: true,
+          });
+          
+          // Initialize with some balance for demo
+          setBalance({
+            usdc: '10.00',
+            sol: '0.5',
+          });
+          
+          return;
+        }
+      }
+      
+      // Fallback to demo wallet if no Privy user
       const randomBytes = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
         Math.random().toString()
@@ -107,95 +147,75 @@ export function WalletProvider({ children }: WalletProviderProps) {
         sol: '0.5',
       });
       
-      return true;
     } catch (error) {
       console.error('Error connecting wallet:', error);
-      return false;
     }
   };
   
   const disconnectWallet = async () => {
     try {
+      // Clear wallet data from secure storage
       await storage.removeItem('wallet_public_key');
-      await storage.removeItem('wallet_balance_usdc');
       
+      // Reset wallet state
       setWallet({
         publicKey: null,
         isConnected: false,
       });
       
+      // Reset balance
       setBalance({
         usdc: '0',
         sol: '0',
       });
       
-      return true;
     } catch (error) {
       console.error('Error disconnecting wallet:', error);
-      return false;
-    }
-  };
-  
-  const refreshWallet = async () => {
-    try {
-      // In a real app, this would query the blockchain
-      // For this demo, we'll retrieve the stored balance
-      const storedUSDC = await storage.getItem('wallet_balance_usdc');
-      
-      if (storedUSDC) {
-        setBalance(prev => ({
-          ...prev,
-          usdc: storedUSDC,
-        }));
-      }
-    } catch (error) {
-      console.error('Error refreshing wallet:', error);
     }
   };
   
   const depositUSDC = async (amount: number) => {
     try {
-      // In a real app, this would interact with a payment processor
-      // For this demo, we'll just update the stored balance
-      const newBalance = (parseFloat(balance.usdc) + amount).toFixed(2);
+      // In a real app, we would call a blockchain API
+      // For this demo, we'll just update the balance in state
+      const newBalance = parseFloat(balance.usdc) + amount;
       
-      await storage.setItem('wallet_balance_usdc', newBalance);
+      setBalance({
+        ...balance,
+        usdc: newBalance.toFixed(2),
+      });
       
-      setBalance(prev => ({
-        ...prev,
-        usdc: newBalance,
-      }));
-      
-      return true;
     } catch (error) {
       console.error('Error depositing USDC:', error);
-      return false;
     }
   };
   
   const withdrawUSDC = async (amount: number, address: string) => {
     try {
-      // In a real app, this would create a blockchain transaction
-      // For this demo, we'll just update the stored balance
-      const currentBalance = parseFloat(balance.usdc);
+      // In a real app, we would call a blockchain API
+      // For this demo, we'll just update the balance in state
+      const newBalance = Math.max(0, parseFloat(balance.usdc) - amount);
       
-      if (amount > currentBalance) {
-        throw new Error('Insufficient balance');
-      }
+      setBalance({
+        ...balance,
+        usdc: newBalance.toFixed(2),
+      });
       
-      const newBalance = (currentBalance - amount).toFixed(2);
-      
-      await storage.setItem('wallet_balance_usdc', newBalance);
-      
-      setBalance(prev => ({
-        ...prev,
-        usdc: newBalance,
-      }));
-      
-      return true;
     } catch (error) {
       console.error('Error withdrawing USDC:', error);
-      return false;
+    }
+  };
+  
+  const refreshWallet = async () => {
+    try {
+      // In a real app, we would query the blockchain for latest balances
+      // For this demo, we'll use the stored balance
+      
+      // Simulate API request delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+    } catch (error) {
+      console.error('Error refreshing wallet:', error);
     }
   };
   
