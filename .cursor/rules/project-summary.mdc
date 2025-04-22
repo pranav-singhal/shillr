@@ -17,4 +17,5 @@ Technical details:
 - wallet provider is privy.io. Refer to [expo-privy.xml](mdc:expo-privy.xml) for understanding how to integrate privy. This file has details about an example codebase which uses privy with expo in a project
 - privy has multiple hooks. Refer to [expo-privy.xml](mdc:expo-privy.xml) to understand which hook to use where
 - uses solana/web3.js for connecting to solana devnet and mainnet
+- This project uses pnpm. Always use pnpm
 

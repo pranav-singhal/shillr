@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { useTheme } from '@/contexts/ThemeContext';
 import Header from '@/components/Header';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useWallet } from '@/contexts/WalletContext';
-import { Copy, Send, RefreshCw, Plus, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+import { ArrowDownToLine, ArrowUpFromLine, Copy, Plus, RefreshCw, Send } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function WalletScreen() {
   const { colors } = useTheme();
-  const { wallet, balance, depositUSDC, withdrawUSDC, refreshWallet } = useWallet();
+  const { wallet, balance, depositUSDC, withdrawUSDC, refreshWallet, isRefreshing, network } = useWallet();
   const [amount, setAmount] = useState('');
   const [withdrawAddress, setWithdrawAddress] = useState('');
   const [activeTab, setActiveTab] = useState('deposit');
@@ -51,6 +50,21 @@ export default function WalletScreen() {
     setWithdrawAddress('');
   };
 
+  const handleRefresh = async () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    await refreshWallet();
+  };
+
+  // Format balance for display - show at most 5 decimal places
+  const formatSOL = (amount: string) => {
+    const num = parseFloat(amount);
+    if (num === 0) return '0';
+    if (num < 0.00001) return '<0.00001';
+    return num.toFixed(Math.min(5, amount.split('.')[1]?.length || 5));
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Header title="Wallet" />
@@ -64,29 +78,41 @@ export default function WalletScreen() {
             style={styles.walletGradient}
           >
             <View style={styles.walletHeader}>
-              <Text style={styles.walletTitle}>Solana Wallet</Text>
+              <View style={styles.walletTitleContainer}>
+                <Text style={styles.walletTitle}>Solana Wallet</Text>
+                <Text style={styles.networkBadge}>
+                  {network === 'devnet' ? 'DEVNET' : 'MAINNET'}
+                </Text>
+              </View>
               <TouchableOpacity 
                 style={styles.refreshButton} 
-                onPress={refreshWallet}
+                onPress={handleRefresh}
+                disabled={isRefreshing}
               >
-                <RefreshCw size={16} color="#FFF" />
+                {isRefreshing ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <RefreshCw size={16} color="#FFF" />
+                )}
               </TouchableOpacity>
             </View>
             
             <View style={styles.balanceContainer}>
               <Text style={styles.balanceLabel}>Balance</Text>
-              <Text style={styles.balanceValue}>${parseFloat(balance.usdc).toFixed(2)}</Text>
-              <Text style={styles.balanceSubtext}>{parseFloat(balance.usdc).toFixed(2)} USDC</Text>
+              <Text style={styles.balanceValue}>{formatSOL(balance.sol)} SOL</Text>
+              <View style={styles.solBalanceContainer}>
+                {/* <Text style={styles.balanceSubtext}>{parseFloat(balance.usdc).toFixed(2)} USDC</Text>
+                <Text style={styles.solBalanceText}>
+                  {formatSOL(balance.sol)} SOL
+                </Text> */}
+              </View>
             </View>
             
             <View style={styles.addressContainer}>
               <Text style={styles.addressLabel}>Wallet Address</Text>
               <View style={styles.addressRow}>
-                <Text style={styles.addressValue}>
-                  {wallet.publicKey 
-                    ? `${wallet.publicKey.slice(0, 8)}...${wallet.publicKey.slice(-8)}`
-                    : 'Loading...'
-                  }
+                <Text style={styles.addressValue} numberOfLines={1} ellipsizeMode="middle">
+                  {wallet.publicKey || 'Loading...'}
                 </Text>
                 <TouchableOpacity onPress={copyToClipboard} style={styles.copyButton}>
                   <Copy size={16} color="#FFF" />
@@ -240,7 +266,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 24,
-    height: 220,
+    height: 300,
   },
   walletGradient: {
     flex: 1,
@@ -252,13 +278,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
+  walletTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   walletTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 18,
     color: '#FFFFFF',
+    marginRight: 8,
+  },
+  networkBadge: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   refreshButton: {
     padding: 6,
+    height: 28,
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   balanceContainer: {
     marginBottom: 32,
@@ -278,6 +322,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
+  },
+  solBalanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  solBalanceText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginLeft: 8,
+    paddingLeft: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255, 255, 255, 0.3)',
   },
   addressContainer: {
     marginTop: 'auto',

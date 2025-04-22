@@ -1,8 +1,12 @@
 import { getUserEmbeddedSolanaWallet, useEmbeddedSolanaWallet, usePrivy } from '@privy-io/expo';
+import { Connection, LAMPORTS_PER_SOL, PublicKey, clusterApiUrl } from '@solana/web3.js';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+
+// Network configuration
+export type SolanaNetwork = 'devnet' | 'mainnet-beta';
 
 // Platform-specific storage implementation
 const storage = {
@@ -37,11 +41,14 @@ interface WalletContextType {
     usdc: string;
     sol: string;
   };
+  network: SolanaNetwork;
+  isRefreshing: boolean;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
   depositUSDC: (amount: number) => Promise<void>;
   withdrawUSDC: (amount: number, address: string) => Promise<void>;
   refreshWallet: () => Promise<void>;
+  getSolanaConnection: () => Connection;
 }
 
 interface WalletProviderProps {
@@ -61,11 +68,20 @@ export function WalletProvider({ children }: WalletProviderProps) {
   
   const [balance, setBalance] = useState({
     usdc: '10',
-    sol: '10',
+    sol: '0',
   });
+
+  // Network configuration - defaulting to devnet for development
+  const [network] = useState<SolanaNetwork>('devnet');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { user, isReady } = usePrivy();
   const solanaWallet = useEmbeddedSolanaWallet();
+  
+  // Get Solana connection based on the current network
+  const getSolanaConnection = () => {
+    return new Connection(clusterApiUrl(network));
+  };
   
   // Initialize wallet when user is loaded
   useEffect(() => {
@@ -120,6 +136,9 @@ export function WalletProvider({ children }: WalletProviderProps) {
             usdc: '10.00',
             sol: '0.5',
           });
+          
+          // Fetch the real balance
+          await refreshWallet();
           
           return;
         }
@@ -208,14 +227,36 @@ export function WalletProvider({ children }: WalletProviderProps) {
   
   const refreshWallet = async () => {
     try {
-      // In a real app, we would query the blockchain for latest balances
-      // For this demo, we'll use the stored balance
+      if (!wallet.publicKey) {
+        return;
+      }
       
-      // Simulate API request delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      setIsRefreshing(true);
+      
+      // Get a connection to the Solana network
+      const connection = getSolanaConnection();
+      
+      // Create a PublicKey object from the wallet's public key
+      const publicKey = new PublicKey(wallet.publicKey);
+      
+      // Fetch the SOL balance
+      const solBalance = await connection.getBalance(publicKey);
+
+      console.log('solBalance', solBalance);
+      
+      // Convert lamports to SOL (1 SOL = 1,000,000,000 lamports)
+      const solBalanceInSol = solBalance / LAMPORTS_PER_SOL;
+      
+      // Update the balance state
+      setBalance(prevBalance => ({
+        ...prevBalance,
+        sol: solBalanceInSol.toFixed(8),
+      }));
       
     } catch (error) {
       console.error('Error refreshing wallet:', error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
   
@@ -224,11 +265,14 @@ export function WalletProvider({ children }: WalletProviderProps) {
       value={{
         wallet,
         balance,
+        network,
+        isRefreshing,
         connectWallet,
         disconnectWallet,
         depositUSDC,
         withdrawUSDC,
         refreshWallet,
+        getSolanaConnection,
       }}
     >
       {children}
