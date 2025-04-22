@@ -1,19 +1,20 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, Animated, PanResponder, Image, TouchableOpacity } from 'react-native';
+import Header from '@/components/Header';
+import Slider from '@/components/Slider';
+import { useCoins } from '@/contexts/CoinContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWallet } from '@/contexts/WalletContext';
-import { useCoins } from '@/contexts/CoinContext';
-import { LinearGradient } from 'expo-linear-gradient';
-import Header from '@/components/Header';
-import { Info as InfoIcon, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react-native';
-import Slider from '@/components/Slider';
+import { usePrivy } from '@privy-io/expo';
 import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Info as InfoIcon, TrendingDown, TrendingUp } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Dimensions, Image, PanResponder, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 
 export default function DiscoverScreen() {
+  const {isReady, user} = usePrivy();
   const { colors } = useTheme();
   const { wallet, balance } = useWallet();
   const { coins, loading, fetchCoins } = useCoins();
@@ -77,29 +78,27 @@ export default function DiscoverScreen() {
     });
   };
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: (event, gesture) => {
-        position.setValue({ x: gesture.dx, y: gesture.dy });
-      },
-      onPanResponderRelease: (event, gesture) => {
-        if (gesture.dx > SWIPE_THRESHOLD) {
-          swipeRight();
-        } else if (gesture.dx < -SWIPE_THRESHOLD) {
-          swipeLeft();
-        } else {
-          resetPosition();
-        }
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderMove: (event, gesture) => {
+      position.setValue({ x: gesture.dx, y: gesture.dy });
+    },
+    onPanResponderRelease: (event, gesture) => {
+      if (gesture.dx > SWIPE_THRESHOLD) {
+        swipeRight();
+      } else if (gesture.dx < -SWIPE_THRESHOLD) {
+        swipeLeft();
+      } else {
+        resetPosition();
       }
-    })
-  ).current;
+    }
+  });
 
   const renderCard = () => {
     if (loading) {
       return (
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.loadingText, { color: colors.text }]}>Loading coins...</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={colors.text} />
         </View>
       );
     }
@@ -205,6 +204,12 @@ export default function DiscoverScreen() {
       </Animated.View>
     );
   };
+
+  if (!isReady) {
+    return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" color={colors.text} />
+    </View>
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
