@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useWallet } from './WalletContext';
 
 // Define types
@@ -12,6 +12,37 @@ interface Coin {
   total_volume: number;
   image: string;
   amount?: number;
+}
+
+// API response types for the Mainnet API
+interface AutoFunToken {
+  id: string; // Token mint address
+  name: string;
+  ticker: string; // Used as symbol
+  image: string;
+  description: string;
+  marketCapUSD: number;
+  tokenPriceUSD: number;
+  priceChange24h: number;
+  volume24h: number;
+}
+
+interface AutoFunResponse {
+  tokens: AutoFunToken[];
+  page: number;
+  totalPages: number;
+  total: number;
+  hasMore: boolean;
+}
+
+// API params type
+interface FetchTokensParams {
+  limit?: number;
+  page?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  hideImported?: number;
+  status?: string;
 }
 
 interface CoinContextType {
@@ -28,16 +59,78 @@ interface CoinContextType {
 
 const CoinContext = createContext<CoinContextType | undefined>(undefined);
 
-export function CoinProvider({ children }: { children: React.ReactNode }) {
-  const [coins, setCoins] = useState<Coin[]>([]);
-  const [portfolio, setPortfolio] = useState<Coin[]>([]);
-  const [totalValue, setTotalValue] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// Utility function to fetch tokens from Auto.fun API (mainnet)
+async function fetchAutoFunTokens(params: FetchTokensParams = {}): Promise<AutoFunResponse> {
+  const defaultParams: FetchTokensParams = {
+    limit: 20,
+    page: 1,
+    sortBy: 'marketCapUSD',
+    sortOrder: 'desc',
+    hideImported: 1,
+    status: 'bonded',
+  };
+
+  const queryParams = new URLSearchParams();
+  const mergedParams = { ...defaultParams, ...params };
+
+  Object.entries(mergedParams).forEach(([key, value]) => {
+    if (value !== undefined) {
+      queryParams.append(key, String(value));
+    }
+  });
+
+  console.log('Query params:', queryParams.toString());
   
-  const { wallet, balance, depositUSDC, withdrawUSDC } = useWallet();
-  
-  // Mock data for demo purposes
+  const url = `https://recursive.so/api/tokens?${queryParams.toString()}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+      },
+      method: 'GET',
+    });
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', JSON.stringify(Object.fromEntries([...response.headers.entries()])));
+    console.log('Response from auto fun:', response);
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Detailed fetch error:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+      url,
+    });
+    
+    // Rethrow the error after logging details
+    throw error;
+  }
+}
+
+// Convert Auto.fun tokens to our Coin format
+function convertAutoFunToCoin(token: AutoFunToken): Coin {
+  return {
+    id: token.id,
+    name: token.name,
+    symbol: token.ticker.toLowerCase(),
+    current_price: token.tokenPriceUSD,
+    price_change_percentage_24h: token.priceChange24h,
+    market_cap: token.marketCapUSD,
+    total_volume: token.volume24h,
+    image: token.image,
+  };
+}
+
+// Utility function to fetch devnet tokens (placeholder for now)
+async function fetchDevnetTokens(): Promise<Coin[]> {
+  // Mock data for devnet (to be replaced with actual API call when available)
   const mockCoins = [
     {
       id: 'dogecoin',
@@ -120,6 +213,21 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
       image: 'https://assets.coingecko.com/coins/images/29440/large/catdogeai.png',
     }
   ];
+
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  return mockCoins;
+}
+
+export function CoinProvider({ children }: { children: React.ReactNode }) {
+  const [coins, setCoins] = useState<Coin[]>([]);
+  const [portfolio, setPortfolio] = useState<Coin[]>([]);
+  const [totalValue, setTotalValue] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { wallet, balance, depositUSDC, withdrawUSDC, network } = useWallet();
   
   // Update total portfolio value whenever portfolio changes
   useEffect(() => {
@@ -135,23 +243,51 @@ export function CoinProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     
     try {
-      // In a real app, we would fetch from an API
-      // For this demo, we'll use the mock data
+      let fetchedCoins: Coin[];
+
+      if (network === 'mainnet-beta') {
+        console.log('Fetching coins for mainnet-beta network');
+        // For mainnet, use the Auto.fun API
+        try {
+          const response = await fetchAutoFunTokens({
+            limit: 20,
+            page: 1,
+            sortBy: 'marketCapUSD',
+            sortOrder: 'desc',
+          });
+          
+          fetchedCoins = response.tokens.map(convertAutoFunToCoin);
+          console.log(`Successfully fetched ${fetchedCoins.length} tokens from mainnet`);
+        } catch (mainnetError) {
+          console.error('Mainnet fetch specific error:', mainnetError);
+          throw mainnetError; // Re-throw to be caught by the outer catch
+        }
+      } else {
+        console.log(`Fetching coins for ${network} network`);
+        // For devnet, use the devnet API or mock data
+        fetchedCoins = await fetchDevnetTokens();
+        console.log(`Successfully fetched ${fetchedCoins.length} tokens from devnet`);
+      }
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Randomize the order of the coins
-      const shuffledCoins = [...mockCoins].sort(() => 0.5 - Math.random());
-      
-      setCoins(shuffledCoins);
+      setCoins(fetchedCoins);
     } catch (error) {
-      setError('Failed to fetch coins');
-      console.error('Error fetching coins:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch coins';
+      setError(errorMessage);
+      console.error('Error fetching coins details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined,
+        network: network,
+      });
     } finally {
       setLoading(false);
     }
   };
+  
+  // Load coins when network changes
+  useEffect(() => {
+    fetchCoins();
+  }, [network]);
   
   const buyToken = async (coin: Coin, usdcAmount: number) => {
     try {
