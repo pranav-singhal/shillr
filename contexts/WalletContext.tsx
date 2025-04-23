@@ -72,7 +72,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
   });
 
   // Network configuration - defaulting to devnet for development
-  const [network] = useState<SolanaNetwork>('devnet');
+  const [network] = useState<SolanaNetwork>('mainnet-beta');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { user, isReady } = usePrivy();
