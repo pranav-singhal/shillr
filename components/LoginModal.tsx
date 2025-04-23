@@ -1,7 +1,7 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLoginWithEmail, usePrivy } from '@privy-io/expo';
 import { X } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface LoginModalProps {
@@ -59,11 +59,14 @@ export default function LoginModal({ visible, onClose }: LoginModalProps) {
     }
   };
 
+  useEffect(() => {
+    if (user) {
+      onClose();
+    }
+  }, [user, onClose]);
+
   // If user is already logged in, don't show the modal
-  if (user) {
-    onClose();
-    return null;
-  }
+  
 
   return (
     <Modal
